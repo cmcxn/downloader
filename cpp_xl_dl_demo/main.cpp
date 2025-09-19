@@ -5,8 +5,9 @@
 #include <thread>
 #include <chrono>
 #include <string>
+#include <csignal>
 
-// ========== Äã×Ô¼ºµÄÐÅÏ¢ & ³£Á¿ÅäÖÃ ==========
+// ========== ï¿½ï¿½ï¿½Ô¼ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢ & ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ==========
 const std::string APP_ID = "eGwta3o3SzEwMTYzAAAAA7MnAAA=";
 const std::string APP_VER = "1.2.3";
 const std::string TOKEN_SERVER = "http://1.94.243.230:8080";
@@ -14,24 +15,24 @@ const std::string LOGIN_TOKEN_URL = TOKEN_SERVER + "/login_token";
 const std::string TASK_TOKEN_URL  = TOKEN_SERVER + "/task_token";
 const std::string DOWNLOAD_URL    = "https://down.sandai.net/thunder11/XunLeiSetup12.0.12.2510.exe";
 
-// ========== È«¾ÖÄ¿Â¼ & ÎÄ¼þÃû ==========
-// ¿ÉÖ´ÐÐÎÄ¼þËùÔÚÄ¿Â¼
+// ========== È«ï¿½ï¿½Ä¿Â¼ & ï¿½Ä¼ï¿½ï¿½ï¿½ ==========
+// ï¿½ï¿½Ö´ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿Â¼
 static const std::string SDK_CONFIG_DIR = get_exe_dir() + "\\conf";
 static const std::string FILE_SAVE_DIR  = get_exe_dir() + "\\download";
 static const std::string SAVE_NAME      = get_file_name_from_url(DOWNLOAD_URL);
 
-// ========== main º¯Êý ==========
+// ========== main ï¿½ï¿½ï¿½ï¿½ ==========
 
 int main() {
 
-    // Ctrl+C ÍË³ö
+    // Ctrl+C ï¿½Ë³ï¿½
     signal(SIGINT, signal_handler);
 
-    // ³õÊ¼»¯ËùÐèÄ¿Â¼
+    // ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿Â¼
     if (!ExistDir(SDK_CONFIG_DIR)) CreateDir(SDK_CONFIG_DIR);
     if (!ExistDir(FILE_SAVE_DIR))  CreateDir(FILE_SAVE_DIR);
 
-    // SDK ³õÊ¼»¯
+    // SDK ï¿½ï¿½Ê¼ï¿½ï¿½
     xl_dl_init_param init_param;
     init_param.app_id       = APP_ID.c_str();
     init_param.app_version  = APP_VER.c_str();
@@ -39,18 +40,18 @@ int main() {
     init_param.cfg_path     = SDK_CONFIG_DIR.c_str();
     xl_dl_init(&init_param);
 
-    // ¼ì²éÔ¶³ÌÎÄ¼þ´óÐ¡ & ±¾µØÎÄ¼þ´óÐ¡
+    // ï¿½ï¿½ï¿½Ô¶ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½Ð¡ & ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½Ð¡
     int64_t remote_size = get_remote_file_size(DOWNLOAD_URL);
     std::string local_full_path = FILE_SAVE_DIR + "\\" + SAVE_NAME;
     int64_t local_size  = get_local_file_size(local_full_path);
 
-    // Èç¹û±¾µØ´óÐ¡ÓëÔ¶³ÌÏàµÈ£¬ÊÓÎªÏÂÔØÍê³É => Ö±½Ó½øÈë¡°P2P×öÖÖ¡±Ä£Ê½
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø´ï¿½Ð¡ï¿½ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½È£ï¿½ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ => Ö±ï¿½Ó½ï¿½ï¿½ë¡°P2Pï¿½ï¿½ï¿½Ö¡ï¿½Ä£Ê½
     bool skip_download = false;
     if (remote_size > 0 && remote_size == local_size) {
         skip_download = true;
     }
 
-    // Èç¹ûÒÑ¾­ÏÂÔØÍê³É => ½øÈëP2P
+    // ï¿½ï¿½ï¿½ï¿½Ñ¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ => ï¿½ï¿½ï¿½ï¿½P2P
     if (skip_download) {
         xl_dl_set_upload_switch(1);
         xl_dl_set_upload_speed_limit(UINT32_MAX);
@@ -60,9 +61,9 @@ int main() {
         }
     }
 
-    // Èç¹ûÎÄ¼þÎ´Íê³É£¬ÐèÒª¼ÌÐøÏÂÔØ
+    // ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½Î´ï¿½ï¿½É£ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
-    // ¶ÁÈ¡±¾µØÈÎÎñÓ³Éä£¬¼ì²éÊÇ·ñÓÐÍ¬URLµÄÎ´Íê³ÉÈÎÎñ
+    // ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó³ï¿½ä£¬ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½Í¬URLï¿½ï¿½Î´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     auto task_map = load_task_map();
     uint32_t task_count = 0;
     xl_dl_get_unfinished_tasks(nullptr, &task_count);
@@ -70,16 +71,16 @@ int main() {
     bool found_same = false;
 
     if (task_count > 0) {
-        // »Ö¸´ËùÓÐÎ´Íê³ÉÈÎÎñ
+        // ï¿½Ö¸ï¿½ï¿½ï¿½ï¿½ï¿½Î´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         uint64_t* arr = new uint64_t[task_count];
         xl_dl_get_unfinished_tasks(arr, &task_count);
 
         for (uint32_t i = 0; i < task_count; i++) {
             uint64_t tid = arr[i];
-            // Æô¶¯Î´Íê³ÉµÄÈÎÎñ
+            // ï¿½ï¿½ï¿½ï¿½Î´ï¿½ï¿½Éµï¿½ï¿½ï¿½ï¿½ï¿½
             xl_dl_start_task(tid);
 
-            // Èç¹ûºÍµ±Ç° URL ÏàÍ¬£¬Ôò¸´ÓÃ
+            // ï¿½ï¿½ï¿½ï¿½Íµï¿½Ç° URL ï¿½ï¿½Í¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             auto it = task_map.find(tid);
             if (it != task_map.end() && it->second == DOWNLOAD_URL) {
                 found_same = true;
@@ -89,7 +90,7 @@ int main() {
         delete[] arr;
     }
 
-    // Èç¹ûÃ»ÓÐÏàÍ¬URLµÄÎ´Íê³ÉÈÎÎñ => ´´½¨ÐÂÈÎÎñ
+    // ï¿½ï¿½ï¿½Ã»ï¿½ï¿½ï¿½ï¿½Í¬URLï¿½ï¿½Î´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ => ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     if (!found_same) {
         xl_dl_create_p2sp_info create_info;
         create_info.save_name = SAVE_NAME.c_str();
@@ -98,26 +99,26 @@ int main() {
 
         xl_dl_create_p2sp_task(&create_info, &task_id);
 
-        // ÐÂ½¨ÈÎÎñ¼ÓÈë±¾µØÓ³Éä
+        // ï¿½Â½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ë±¾ï¿½ï¿½Ó³ï¿½ï¿½
         task_map[task_id] = DOWNLOAD_URL;
         save_task_map(task_map);
     }
 
-    // µÇÂ¼£¬»ñÈ¡ session
+    // ï¿½ï¿½Â¼ï¿½ï¿½ï¿½ï¿½È¡ session
     std::string login_token = get_login_token(LOGIN_TOKEN_URL, APP_ID);
     char session[XL_DL_MAX_SESSION_ID_LEN] = {0};
     xl_dl_login(login_token.c_str(), session);
 
-    // Îªµ±Ç°ÈÎÎñÉèÖÃ token
+    // Îªï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ token
     std::string t_token = get_task_token(TASK_TOKEN_URL, APP_ID, session, DOWNLOAD_URL);
     xl_dl_set_task_token(task_id, t_token.c_str());
     xl_dl_start_task(task_id);
 
-    // ¿ªÆôP2PÉÏ´«£¬²»ÏÞËÙ
+    // ï¿½ï¿½ï¿½ï¿½P2Pï¿½Ï´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     xl_dl_set_upload_switch(1);
     xl_dl_set_upload_speed_limit(UINT32_MAX);
 
-    // ²éÑ¯ÏÂÔØ½ø¶È
+    // ï¿½ï¿½Ñ¯ï¿½ï¿½ï¿½Ø½ï¿½ï¿½ï¿½
     while (true) {
         xl_dl_task_state st;
         if (xl_dl_get_task_state(task_id, &st) != 0) {
@@ -128,7 +129,7 @@ int main() {
             percent = (100.0 * (double)st.downloaded_size) / (double)st.total_size;
         }
 
-        // ½ö±£Áô½ø¶ÈÐÅÏ¢
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢
         printf("\rtask_id=%llu, total=%lld, downloaded=%lld, progress=%.2f%%, speed=%lldKB/s ",
                (unsigned long long)task_id,
                (long long)st.total_size,
@@ -138,7 +139,7 @@ int main() {
         );
         fflush(stdout);
 
-        // Èç¹û³É¹¦»òÊ§°Ü£¬Ìø³öÑ­»· => ½øÈëP2P×öÖÖ
+        // ï¿½ï¿½ï¿½ï¿½É¹ï¿½ï¿½ï¿½Ê§ï¿½Ü£ï¿½ï¿½ï¿½ï¿½ï¿½Ñ­ï¿½ï¿½ => ï¿½ï¿½ï¿½ï¿½P2Pï¿½ï¿½ï¿½ï¿½
         if (st.state_code == XL_DL_TASK_STATUS_SUCCEEDED ||
             st.state_code == XL_DL_TASK_STATUS_FAILED) {
             printf("\nDownload complete, keep P2P active...\n");
@@ -148,7 +149,7 @@ int main() {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
-    // ½øÈë³ÖÐø×öÖÖÄ£Ê½
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä£Ê½
     while (true) {
         print_with_timestamp("P2P Upload active... Press Ctrl+C to exit.\n");
         std::this_thread::sleep_for(std::chrono::minutes(5));

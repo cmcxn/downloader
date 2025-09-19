@@ -1,0 +1,145 @@
+#include "download_helper.h"
+#include "http.h"
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <ctime>
+#include <csignal>
+#include <filesystem>
+#include "http.h"
+#include "json.hpp"
+#include "fs_utility.h"
+#include "xl_dl_sdk.h"
+
+#include <cstdio>
+#include <chrono>
+#include <thread>
+#include <string>
+#include <sstream>
+#include <fstream>
+#include <map>
+#include <csignal>  // Ctrl+C
+#include <ctime>    // 时间戳
+#include <sys/stat.h>  // stat() 获取文件大小
+#include <direct.h>  // _getcwd() 在这里面声明
+using json = nlohmann::json;
+
+
+#include <windows.h>
+#include <filesystem>
+ 
+#include <iostream>
+
+std::string get_exe_dir() {
+    char path[MAX_PATH] = {0};
+    GetModuleFileNameA(NULL, path, MAX_PATH);
+    return std::filesystem::path(path).parent_path().string();
+}
+
+int64_t get_remote_file_size(const std::string& url) {
+    std::string headers;
+    int ret = http_head(url, headers);
+    if (ret != 0) return -1;
+
+    int64_t content_length = -1;
+    const std::string key = "Content-Length:";
+    std::istringstream iss(headers);
+    std::string line;
+    while (std::getline(iss, line)) {
+        if (line.find(key) != std::string::npos) {
+            size_t pos = line.find(":");
+            if (pos != std::string::npos) {
+                std::string val = line.substr(pos + 1);
+                while (!val.empty() && (val.front() == ' ' || val.front() == '\t')) {
+                    val.erase(val.begin());
+                }
+                content_length = std::stoll(val);
+                break;
+            }
+        }
+    }
+    return content_length;
+}
+
+int64_t get_local_file_size(const std::string& path) {
+    try {
+        return static_cast<int64_t>(std::filesystem::file_size(path));
+    } catch (...) {
+        return -1;
+    }
+}
+
+void print_with_timestamp(const char* message) {
+    std::time_t now = std::time(nullptr);
+    char time_str[20];
+    std::strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", std::localtime(&now));
+    printf("[%s] %s", time_str, message);
+}
+
+std::string get_file_name_from_url(const std::string& url) {
+    size_t last_slash = url.find_last_of('/');
+    if (last_slash != std::string::npos) {
+        return url.substr(last_slash + 1);
+    }
+    return "default_filename";
+}
+
+std::map<uint64_t, std::string> load_task_map() {
+    std::map<uint64_t, std::string> result;
+    std::ifstream ifs("tasks_map.json");
+    if (!ifs.is_open()) return result;
+
+    try {
+        json j;
+        ifs >> j;
+        for (auto& item : j.items()) {
+            uint64_t task_id = std::stoull(item.key());
+            result[task_id] = item.value().get<std::string>();
+        }
+    } catch (...) {}
+
+    return result;
+}
+
+void save_task_map(const std::map<uint64_t, std::string>& m) {
+    json j;
+    for (auto& kv : m) {
+        j[std::to_string(kv.first)] = kv.second;
+    }
+    std::ofstream ofs("tasks_map.json", std::ios::trunc);
+    ofs << j.dump(2);
+}
+
+std::string get_login_token(const std::string& url, const std::string& app_id) {
+    std::ostringstream oss;
+    oss << "{\"app_id\":\"" << app_id << "\"}";
+    std::string response;
+    http_post(url, oss.str(), response);
+
+    try {
+        json data = json::parse(response);
+        return data["token"];
+    } catch (...) {
+        return "";
+    }
+}
+
+std::string get_task_token(const std::string& url, const std::string& app_id, const std::string& session, const std::string& task_url) {
+    std::ostringstream oss;
+    oss << "{\"app_id\":\"" << app_id << "\",\"session\":\"" << session << "\",\"url\":\"" << task_url << "\"}";
+    std::string response;
+    http_post(url, oss.str(), response);
+
+    try {
+        json data = json::parse(response);
+        return data["token"];
+    } catch (...) {
+        return "";
+    }
+}
+
+void signal_handler(int signal) {
+    printf("\n[Debug] Caught signal %d, exiting...\n", signal);
+    xl_dl_uninit();
+    exit(0);
+}

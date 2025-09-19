@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.14)
 
 project(cpp_xl_dl_demo)
 
+# 下载 CPM.cmake 依赖管理工具
 file(
   DOWNLOAD
   https://github.com/cpm-cmake/CPM.cmake/releases/download/v0.38.3/CPM.cmake
@@ -10,13 +11,8 @@ file(
 )
 include(${CMAKE_CURRENT_BINARY_DIR}/cmake/CPM.cmake)
 
-set(CMAKE_CXX_STANDARD 11)
-
-# 设置默认构建类型为 Debug
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
-    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
-endif()
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(WIN32)
   set(CURL_USE_SCHANNEL ON)
@@ -25,6 +21,7 @@ else()
   set(CURL_USE_OPENSSL ON)
 endif()
 
+# 添加 curl 依赖
 CPMAddPackage(
     NAME curl
     GITHUB_REPOSITORY "curl/curl"
@@ -37,21 +34,23 @@ CPMAddPackage(
         "BUILD_TESTING OFF"
 )
 
-include_directories("../")
-link_directories("../")
+# 包含当前目录头文件
+include_directories(${CMAKE_SOURCE_DIR})
+link_directories(${CMAKE_SOURCE_DIR})
 
-add_executable(cpp_xl_dl_demo main.cpp)
+# 添加可执行文件，包含 main.cpp 和 download_helper.cpp
+add_executable(cpp_xl_dl_demo main.cpp download_helper.cpp)
 
-if (${CMAKE_SYSTEM_NAME} STREQUAL Windows)
+# 设置 include 目录，确保头文件可用
+target_include_directories(cpp_xl_dl_demo PRIVATE ${CMAKE_SOURCE_DIR})
+
+# 链接必要的库
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
   target_link_libraries(cpp_xl_dl_demo libcurl dk.lib)
-elseif (${CMAKE_SYSTEM_NAME} STREQUAL Linux)
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
   target_link_libraries(cpp_xl_dl_demo libcurl libdk.so)
-elseif (${CMAKE_SYSTEM_NAME} STREQUAL Darwin)
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
   target_link_libraries(cpp_xl_dl_demo libcurl libdk.dylib)
 else()
-    message(FATAL_ERROR, "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
+  message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
 endif()
-
-
-
-

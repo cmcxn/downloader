@@ -55,7 +55,7 @@ jobs:
           cp dk.lib artifacts/windows/
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: downloader-windows
           path: artifacts/windows/
@@ -71,7 +71,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
 
       - name: Create release packages
         run: |
@@ -133,12 +133,10 @@ jobs:
 
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ncipollo/release-action@v1
         with:
-          tag_name: ${{ steps.get_version.outputs.version }}
-          release_name: XL Downloader SDK ${{ steps.get_version.outputs.version }}
+          tag: ${{ steps.get_version.outputs.version }}
+          name: XL Downloader SDK ${{ steps.get_version.outputs.version }}
           body: |
             ## XL Downloader SDK Release ${{ steps.get_version.outputs.version }}
             
@@ -168,15 +166,6 @@ jobs:
             This SDK is designed for Windows environments only.
           draft: false
           prerelease: false
+          artifacts: "release-packages/*"
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Release Assets
-        run: |
-          for file in release-packages/*; do
-            if [ -f "$file" ]; then
-              filename=$(basename "$file")
-              echo "Uploading $filename..."
-              gh release upload ${{ steps.get_version.outputs.version }} "$file" --clobber
-            fi
-          done
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

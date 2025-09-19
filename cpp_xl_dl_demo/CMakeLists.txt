@@ -43,6 +43,20 @@ link_directories(${CMAKE_SOURCE_DIR}/..)
 # 添加可执行文件，包含 main.cpp 和 download_helper.cpp
 add_executable(cpp_xl_dl_demo main.cpp download_helper.cpp)
 
+# 添加Windows GUI可执行文件
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+  add_executable(cpp_xl_dl_demo_gui main_gui.cpp download_helper.cpp)
+  target_include_directories(cpp_xl_dl_demo_gui PRIVATE ${CMAKE_SOURCE_DIR})
+  target_include_directories(cpp_xl_dl_demo_gui PRIVATE ${CMAKE_SOURCE_DIR}/..)
+  target_link_libraries(cpp_xl_dl_demo_gui libcurl dk.lib comctl32)
+  # Set GUI subsystem for Windows application
+  set_target_properties(cpp_xl_dl_demo_gui PROPERTIES
+    WIN32_EXECUTABLE TRUE
+  )
+  # Add Windows-specific compile definitions
+  target_compile_definitions(cpp_xl_dl_demo_gui PRIVATE WIN32 _WIN32)
+endif()
+
 # 设置 include 目录，确保头文件可用
 target_include_directories(cpp_xl_dl_demo PRIVATE ${CMAKE_SOURCE_DIR})
 target_include_directories(cpp_xl_dl_demo PRIVATE ${CMAKE_SOURCE_DIR}/..)

@@ -1,0 +1,41 @@
+# Thunder Downloader GUI Interface Layout
+
+```
+┌─ Thunder Downloader GUI ────────────────────────────────────────────┐
+│                                                                     │
+│  APP ID:        [eGwta3o3SzEwMTYzAAAAA7MnAAA=              ]       │
+│                                                                     │
+│  Token Server:  [http://1.94.243.230:8080                 ]       │
+│                                                                     │
+│  Download URL:  [https://down.sandai.net/thunder11/XunLei...]      │
+│                                                                     │
+│                 [ Start Download ]                                  │
+│                                                                     │
+│  Progress:      [████████████████░░░░░░░░░░░░] 67%                 │
+│                                                                     │
+│  Status: Progress: 67.23% (134217728/200000000 bytes)              │
+│          Speed: 1024 KB/s                                           │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+## Interface Elements:
+
+1. **APP ID Text Field**: Pre-filled with default APP_ID value
+2. **Token Server Text Field**: Pre-filled with default server URL
+3. **Download URL Text Field**: Pre-filled with default download URL
+4. **Start Download Button**: Initiates the download process
+5. **Progress Bar**: Visual progress indicator (0-100%)
+6. **Status Label**: Shows detailed download information including:
+   - Download percentage
+   - Downloaded/Total bytes
+   - Current download speed
+
+## User Interaction Flow:
+
+1. User can modify any of the three input fields
+2. Click "Start Download" to begin
+3. Button becomes disabled during download
+4. Progress bar updates every second
+5. Status text shows real-time download statistics
+6. Button re-enables when download completes or fails

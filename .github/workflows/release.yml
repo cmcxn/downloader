@@ -11,6 +11,9 @@ on:
         required: true
         default: 'v1.0.0'
 
+permissions:
+  contents: write  # Required for creating releases
+  
 jobs:
   build-demo:
     name: Build C++ Demo and Package SDK
@@ -168,4 +171,7 @@ jobs:
           prerelease: false
           artifacts: "release-packages/*"
           token: ${{ secrets.GITHUB_TOKEN }}
+          generateReleaseNotes: false
+          allowUpdates: true
+          makeLatest: true
 

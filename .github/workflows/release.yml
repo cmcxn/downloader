@@ -14,7 +14,7 @@ on:
 jobs:
   build-demo:
     name: Build C++ Demo and Package SDK
-    runs-on: windows-latest
+    runs-on: windows-2022
 
     steps:
       - name: Checkout code

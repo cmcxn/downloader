@@ -9,45 +9,29 @@ on:
 jobs:
   build-test:
     name: Build and Test
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - os: windows-latest
-            platform: windows
-            can_build: true
-          - os: ubuntu-latest
-            platform: linux
-            can_build: false
-          - os: macos-latest
-            platform: macos
-            can_build: false
+    runs-on: windows-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup CMake
-        if: matrix.can_build == true
         uses: jwlawson/actions-setup-cmake@v1.14
         with:
           cmake-version: '3.20'
 
-      - name: Setup MSVC (Windows only)
-        if: matrix.os == 'windows-latest'
+      - name: Setup MSVC
         uses: microsoft/setup-msbuild@v1.3
 
-      - name: Build demo project (Windows only)
-        if: matrix.can_build == true
+      - name: Build demo project
         run: |
           cd cpp_xl_dl_demo
           mkdir build
           cd build
-          cmake ..
+          cmake -G "Visual Studio 17 2022" -A x64 ..
           cmake --build . --config Release
 
-      - name: Verify build output (Windows only)
-        if: matrix.can_build == true && matrix.os == 'windows-latest'
+      - name: Verify build output
         run: |
           if (Test-Path "cpp_xl_dl_demo/build/Release/cpp_xl_dl_demo.exe") {
             Write-Host "✅ Build successful: cpp_xl_dl_demo.exe created"
@@ -78,7 +62,8 @@ jobs:
           if [ -f "dk.dll" ] && [ -f "dk.lib" ]; then
             echo "✅ Windows libraries found"
           else
-            echo "⚠️  Windows libraries missing (expected for non-Windows platforms)"
+            echo "❌ Windows libraries missing"
+            exit 1
           fi
           
           if [ -d "cpp_xl_dl_demo" ]; then

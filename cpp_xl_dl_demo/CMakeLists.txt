@@ -22,7 +22,7 @@ if(WIN32)
   set(CURL_USE_SCHANNEL ON)
   set(CURL_WINDOWS_SSPI ON)
 else()
-  set(CURL_USE_OPENSSL ON)
+  message(FATAL_ERROR "This SDK only supports Windows platforms")
 endif()
 
 CPMAddPackage(
@@ -42,14 +42,10 @@ link_directories("../")
 
 add_executable(cpp_xl_dl_demo main.cpp)
 
-if (${CMAKE_SYSTEM_NAME} STREQUAL Windows)
+if (WIN32)
   target_link_libraries(cpp_xl_dl_demo libcurl dk.lib)
-elseif (${CMAKE_SYSTEM_NAME} STREQUAL Linux)
-  target_link_libraries(cpp_xl_dl_demo libcurl libdk.so)
-elseif (${CMAKE_SYSTEM_NAME} STREQUAL Darwin)
-  target_link_libraries(cpp_xl_dl_demo libcurl libdk.dylib)
 else()
-    message(FATAL_ERROR, "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
+  message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}. This SDK only supports Windows.")
 endif()
 
 

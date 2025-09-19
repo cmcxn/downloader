@@ -9,10 +9,6 @@ This repository contains the XL Downloader SDK for integrating Thunder download 
 2. Extract the Windows package (`xl-downloader-sdk-windows.zip`)
 3. Use the pre-built libraries or build from source
 
-### Linux/macOS (Source Only)
-1. Download the source package from the [Releases page](../../releases)
-2. Build from source using the demo project as reference
-
 ## 📦 What's Included
 
 - **xl_dl_sdk.h** - C++ SDK header file
@@ -27,15 +23,9 @@ This repository contains the XL Downloader SDK for integrating Thunder download 
 cd cpp_xl_dl_demo
 mkdir build
 cd build
-cmake ..
+cmake -G "Visual Studio 17 2022" -A x64 ..
 cmake --build . --config Release
 ```
-
-### Linux/macOS
-Note: Binary libraries are not available for these platforms. You can:
-- Use the header files for reference
-- Adapt the demo code for your platform
-- Contact the SDK provider for platform-specific binaries
 
 ## 📚 Documentation
 
@@ -57,7 +47,7 @@ This repository uses GitHub Actions for automated builds and releases:
 ### Continuous Integration
 - Automatically builds and tests on push/PR to main branches
 - Validates SDK files and build process
-- Currently supports Windows builds only
+- Supports Windows builds only
 
 ## 📁 Repository Structure
 
@@ -87,16 +77,16 @@ This repository uses GitHub Actions for automated builds and releases:
 ### CI Workflow (`ci.yml`)
 - Triggers on push/PR to main branches
 - Validates repository structure
-- Tests build process (Windows only)
+- Tests build process on Windows
 - Ensures SDK integrity
 
 ## 🏷️ Release Assets
 
 Each release includes:
-- Platform-specific packages (Windows, Linux, macOS)
+- Windows package with complete SDK and pre-built demo
 - Complete SDK package with all files
 - Both tar.gz and zip formats for compatibility
 
 ## ⚠️ Platform Notes
 
-This SDK is primarily designed for Windows environments. Linux and macOS packages contain headers and source code only, as binary libraries are Windows-specific.
+This SDK is designed for Windows environments only. The binary libraries (dk.dll, dk.lib) are Windows-specific.

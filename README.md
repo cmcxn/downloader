@@ -80,6 +80,18 @@ This repository uses GitHub Actions for automated builds and releases:
 - Tests build process on Windows
 - Ensures SDK integrity
 
+### Troubleshooting Workflows
+
+**Release Creation Issues:**
+- Ensure the workflow has `permissions: contents: write` for release creation
+- Default `GITHUB_TOKEN` requires explicit permissions for repository modifications
+- Manual workflow dispatch requires proper version input format (e.g., `v1.0.0`)
+
+**Build Issues:**
+- Windows builds require Visual Studio 2022 and CMake 3.21+
+- Verify all SDK files are present before building
+- Check that `dk.dll` and `dk.lib` are accessible during compilation
+
 ## 🏷️ Release Assets
 
 Each release includes:

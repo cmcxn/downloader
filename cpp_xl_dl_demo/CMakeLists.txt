@@ -34,23 +34,30 @@ CPMAddPackage(
         "BUILD_TESTING OFF"
 )
 
-# 包含当前目录头文件
+# 包含当前目录头文件和父目录（xl_dl_sdk.h位置）
 include_directories(${CMAKE_SOURCE_DIR})
+include_directories(${CMAKE_SOURCE_DIR}/..)
 link_directories(${CMAKE_SOURCE_DIR})
+link_directories(${CMAKE_SOURCE_DIR}/..)
 
 # 添加可执行文件，包含 main.cpp 和 download_helper.cpp
 add_executable(cpp_xl_dl_demo main.cpp download_helper.cpp)
 
 # 设置 include 目录，确保头文件可用
 target_include_directories(cpp_xl_dl_demo PRIVATE ${CMAKE_SOURCE_DIR})
+target_include_directories(cpp_xl_dl_demo PRIVATE ${CMAKE_SOURCE_DIR}/..)
 
 # 链接必要的库
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
   target_link_libraries(cpp_xl_dl_demo libcurl dk.lib)
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
-  target_link_libraries(cpp_xl_dl_demo libcurl libdk.so)
+  # Linux libraries not provided in this Windows-only SDK, link only curl
+  target_link_libraries(cpp_xl_dl_demo libcurl)
+  message(WARNING "This SDK is designed for Windows. Linux dk library not available.")
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
-  target_link_libraries(cpp_xl_dl_demo libcurl libdk.dylib)
+  # macOS libraries not provided in this Windows-only SDK, link only curl
+  target_link_libraries(cpp_xl_dl_demo libcurl)
+  message(WARNING "This SDK is designed for Windows. macOS dk library not available.")
 else()
   message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
 endif()

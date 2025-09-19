@@ -19,21 +19,36 @@
 #include <fstream>
 #include <map>
 #include <csignal>  // Ctrl+C
-#include <ctime>    // Ê±¼ä´Á
-#include <sys/stat.h>  // stat() »ñÈ¡ÎÄ¼þ´óÐ¡
-#include <direct.h>  // _getcwd() ÔÚÕâÀïÃæÉùÃ÷
+#include <ctime>    // Ê±ï¿½ï¿½ï¿½
+#include <sys/stat.h>  // stat() ï¿½ï¿½È¡ï¿½Ä¼ï¿½ï¿½ï¿½Ð¡
+#ifdef _WIN32
+#include <direct.h>  // _getcwd() ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+#include <windows.h>
+#else
+#include <unistd.h>  // getcwd() on Linux/Unix
+#include <limits.h>  // PATH_MAX on Linux
+#endif
 using json = nlohmann::json;
 
 
-#include <windows.h>
 #include <filesystem>
  
 #include <iostream>
 
 std::string get_exe_dir() {
+#ifdef _WIN32
     char path[MAX_PATH] = {0};
     GetModuleFileNameA(NULL, path, MAX_PATH);
     return std::filesystem::path(path).parent_path().string();
+#else
+    char path[PATH_MAX];
+    ssize_t count = readlink("/proc/self/exe", path, PATH_MAX);
+    if (count != -1) {
+        path[count] = '\0';
+        return std::filesystem::path(path).parent_path().string();
+    }
+    return "./";  // fallback
+#endif
 }
 
 int64_t get_remote_file_size(const std::string& url) {

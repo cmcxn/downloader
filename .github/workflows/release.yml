@@ -1,0 +1,210 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags (v1.0.0, v1.2.3, etc.)
+  workflow_dispatch:  # Allow manual trigger
+    inputs:
+      version:
+        description: 'Release version'
+        required: true
+        default: 'v1.0.0'
+
+jobs:
+  build-demo:
+    name: Build C++ Demo and Package SDK
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            can_build: true
+          - os: ubuntu-latest
+            platform: linux
+            can_build: false
+          - os: macos-latest
+            platform: macos
+            can_build: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup CMake
+        if: matrix.can_build == true
+        uses: jwlawson/actions-setup-cmake@v1.14
+        with:
+          cmake-version: '3.20'
+
+      - name: Setup MSVC (Windows only)
+        if: matrix.os == 'windows-latest'
+        uses: microsoft/setup-msbuild@v1.3
+
+      - name: Build demo project (Windows only)
+        if: matrix.can_build == true
+        run: |
+          cd cpp_xl_dl_demo
+          mkdir build
+          cd build
+          cmake ..
+          cmake --build . --config Release
+
+      - name: Prepare artifacts
+        shell: bash
+        run: |
+          mkdir -p artifacts/${{ matrix.platform }}
+          
+          # Copy SDK files (available for all platforms)
+          cp xl_dl_sdk.h artifacts/${{ matrix.platform }}/
+          cp api.txt artifacts/${{ matrix.platform }}/
+          cp -r cpp_xl_dl_demo artifacts/${{ matrix.platform }}/
+          
+          # Copy built demo executable (Windows only)
+          if [ "${{ matrix.can_build }}" = "true" ] && [ "${{ matrix.os }}" = "windows-latest" ]; then
+            if [ -f "cpp_xl_dl_demo/build/Release/cpp_xl_dl_demo.exe" ]; then
+              cp cpp_xl_dl_demo/build/Release/cpp_xl_dl_demo.exe artifacts/${{ matrix.platform }}/
+            fi
+            # Copy Windows libraries
+            cp dk.dll artifacts/${{ matrix.platform }}/
+            cp dk.lib artifacts/${{ matrix.platform }}/
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: downloader-${{ matrix.platform }}
+          path: artifacts/${{ matrix.platform }}/
+
+  create-release:
+    name: Create Release
+    needs: build-demo
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Create release packages
+        run: |
+          # Create SDK package with all platforms
+          mkdir -p release-packages
+          
+          # Package for each platform
+          for platform in linux windows macos; do
+            if [ -d "downloader-$platform" ]; then
+              cd downloader-$platform
+              if [ "$platform" = "windows" ]; then
+                zip -r "../release-packages/xl-downloader-sdk-$platform.zip" .
+              else
+                tar -czf "../release-packages/xl-downloader-sdk-$platform.tar.gz" .
+              fi
+              cd ..
+            fi
+          done
+          
+          # Create complete SDK package with all available files
+          mkdir -p complete-sdk
+          cp xl_dl_sdk.h complete-sdk/
+          cp api.txt complete-sdk/
+          cp dk.dll complete-sdk/ 2>/dev/null || true
+          cp dk.lib complete-sdk/ 2>/dev/null || true
+          cp -r cpp_xl_dl_demo complete-sdk/
+          
+          # Add README for complete SDK
+          cat > complete-sdk/README.md << 'EOF'
+          # XL Downloader SDK
+          
+          This is the complete XL Downloader SDK package.
+          
+          ## Contents
+          - `xl_dl_sdk.h` - C++ SDK header file
+          - `api.txt` - Complete API documentation (Chinese)
+          - `dk.dll` and `dk.lib` - Windows binary libraries
+          - `cpp_xl_dl_demo/` - C++ demo project with examples
+          
+          ## Platform Support
+          - **Windows**: Full support with binary libraries included
+          - **Linux/macOS**: Header files and demo source code only (binary libraries not provided)
+          
+          ## Getting Started
+          1. See `cpp_xl_dl_demo/readme.txt` for build instructions
+          2. Review `api.txt` for complete API documentation
+          3. Use the demo project as a starting point for integration
+          
+          ## Note
+          This SDK appears to be primarily designed for Windows environments. The binary libraries (dk.dll, dk.lib) are Windows-specific.
+          EOF
+          
+          cd complete-sdk
+          tar -czf "../release-packages/xl-downloader-complete-sdk.tar.gz" .
+          zip -r "../release-packages/xl-downloader-complete-sdk.zip" .
+          cd ..
+
+      - name: Get version
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.get_version.outputs.version }}
+          release_name: XL Downloader SDK ${{ steps.get_version.outputs.version }}
+          body: |
+            ## XL Downloader SDK Release ${{ steps.get_version.outputs.version }}
+            
+            This release includes:
+            - C++ SDK header file (`xl_dl_sdk.h`)
+            - Complete API documentation in Chinese (`api.txt`)
+            - Windows binary libraries (`dk.dll`, `dk.lib`)
+            - C++ demo project with build instructions and examples
+            - Pre-built demo executable for Windows
+            
+            ### Platform Support:
+            - **Windows**: Full support with binary libraries and pre-built demo
+            - **Linux/macOS**: Header files and source code only (libraries not available)
+            
+            ### Available Downloads:
+            - `xl-downloader-sdk-windows.zip` - Windows platform package with binaries
+            - `xl-downloader-sdk-linux.tar.gz` - Linux package (headers and demo source)
+            - `xl-downloader-sdk-macos.tar.gz` - macOS package (headers and demo source)
+            - `xl-downloader-complete-sdk.tar.gz` - Complete SDK package (all files, tar.gz)
+            - `xl-downloader-complete-sdk.zip` - Complete SDK package (all files, zip)
+            
+            ### Quick Start:
+            1. Download the appropriate platform package or complete SDK
+            2. Extract the files
+            3. For Windows: Use the pre-built binaries or build from source
+            4. For Linux/macOS: Build from source using the demo project
+            5. Follow instructions in `cpp_xl_dl_demo/readme.txt`
+            6. Refer to `api.txt` for complete API documentation
+            
+            ### Note:
+            This SDK is primarily designed for Windows environments. The core binary libraries are Windows-specific.
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Assets
+        run: |
+          for file in release-packages/*; do
+            if [ -f "$file" ]; then
+              filename=$(basename "$file")
+              echo "Uploading $filename..."
+              gh release upload ${{ steps.get_version.outputs.version }} "$file" --clobber
+            fi
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

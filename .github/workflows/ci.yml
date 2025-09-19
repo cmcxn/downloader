@@ -1,0 +1,89 @@
+name: CI Build
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  build-test:
+    name: Build and Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            can_build: true
+          - os: ubuntu-latest
+            platform: linux
+            can_build: false
+          - os: macos-latest
+            platform: macos
+            can_build: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup CMake
+        if: matrix.can_build == true
+        uses: jwlawson/actions-setup-cmake@v1.14
+        with:
+          cmake-version: '3.20'
+
+      - name: Setup MSVC (Windows only)
+        if: matrix.os == 'windows-latest'
+        uses: microsoft/setup-msbuild@v1.3
+
+      - name: Build demo project (Windows only)
+        if: matrix.can_build == true
+        run: |
+          cd cpp_xl_dl_demo
+          mkdir build
+          cd build
+          cmake ..
+          cmake --build . --config Release
+
+      - name: Verify build output (Windows only)
+        if: matrix.can_build == true && matrix.os == 'windows-latest'
+        run: |
+          if (Test-Path "cpp_xl_dl_demo/build/Release/cpp_xl_dl_demo.exe") {
+            Write-Host "✅ Build successful: cpp_xl_dl_demo.exe created"
+            Get-ChildItem "cpp_xl_dl_demo/build/Release/cpp_xl_dl_demo.exe"
+          } else {
+            Write-Host "❌ Build failed: cpp_xl_dl_demo.exe not found"
+            exit 1
+          }
+
+      - name: Check SDK files
+        shell: bash
+        run: |
+          echo "Checking SDK files..."
+          if [ -f "xl_dl_sdk.h" ]; then
+            echo "✅ xl_dl_sdk.h found"
+          else
+            echo "❌ xl_dl_sdk.h missing"
+            exit 1
+          fi
+          
+          if [ -f "api.txt" ]; then
+            echo "✅ api.txt found"
+          else
+            echo "❌ api.txt missing"
+            exit 1
+          fi
+          
+          if [ -f "dk.dll" ] && [ -f "dk.lib" ]; then
+            echo "✅ Windows libraries found"
+          else
+            echo "⚠️  Windows libraries missing (expected for non-Windows platforms)"
+          fi
+          
+          if [ -d "cpp_xl_dl_demo" ]; then
+            echo "✅ Demo project directory found"
+          else
+            echo "❌ Demo project directory missing"
+            exit 1
+          fi

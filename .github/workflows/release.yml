@@ -53,6 +53,10 @@ jobs:
           if [ -f "cpp_xl_dl_demo/build/Release/cpp_xl_dl_demo.exe" ]; then
             cp cpp_xl_dl_demo/build/Release/cpp_xl_dl_demo.exe artifacts/windows/
           fi
+          # Copy built GUI demo executable
+          if [ -f "cpp_xl_dl_demo/build/Release/cpp_xl_dl_demo_gui.exe" ]; then
+            cp cpp_xl_dl_demo/build/Release/cpp_xl_dl_demo_gui.exe artifacts/windows/
+          fi
           # Copy Windows libraries
           cp dk.dll artifacts/windows/
           cp dk.lib artifacts/windows/
@@ -148,13 +152,13 @@ jobs:
             - Complete API documentation in Chinese (`api.txt`)
             - Windows binary libraries (`dk.dll`, `dk.lib`)
             - C++ demo project with build instructions and examples
-            - Pre-built demo executable for Windows
+            - Pre-built demo executables for Windows (`cpp_xl_dl_demo.exe` console version, `cpp_xl_dl_demo_gui.exe` GUI version)
             
             ### Platform Support:
-            - **Windows**: Full support with binary libraries and pre-built demo
+            - **Windows**: Full support with binary libraries and pre-built demos (console and GUI versions)
             
             ### Available Downloads:
-            - `xl-downloader-sdk-windows.zip` - Windows platform package with binaries and pre-built demo
+            - `xl-downloader-sdk-windows.zip` - Windows platform package with binaries and pre-built demos (console and GUI)
             - `xl-downloader-complete-sdk.tar.gz` - Complete SDK package (all files, tar.gz)
             - `xl-downloader-complete-sdk.zip` - Complete SDK package (all files, zip)
             

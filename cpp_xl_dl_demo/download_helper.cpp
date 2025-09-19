@@ -87,7 +87,13 @@ int64_t get_local_file_size(const std::string& path) {
 void print_with_timestamp(const char* message) {
     std::time_t now = std::time(nullptr);
     char time_str[20];
+#ifdef _WIN32
+    struct tm time_info;
+    localtime_s(&time_info, &now);
+    std::strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", &time_info);
+#else
     std::strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", std::localtime(&now));
+#endif
     printf("[%s] %s", time_str, message);
 }
 

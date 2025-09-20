@@ -33,6 +33,7 @@ HWND g_hStatusLabel = NULL;
 // Download state
 bool g_downloadInProgress = false;
 bool g_lastDownloadCompleted = false;  // Track if last download was completed
+bool g_sdkInitialized = false;  // Track if SDK has been initialized
 uint64_t g_currentTaskId = 0;
 std::thread g_downloadThread;
 
@@ -50,6 +51,7 @@ void UpdateProgress();
 void DownloadWorkerThread(std::string appId, std::string tokenServer, std::string downloadUrl);
 std::string GetWindowText(HWND hwnd);
 void SetStatusText(const std::string& text);
+void CheckForUnfinishedTasks();
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -103,6 +105,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     switch (uMsg) {
     case WM_CREATE:
         InitializeControls(hwnd);
+        CheckForUnfinishedTasks();
         break;
 
     case WM_COMMAND:
@@ -141,7 +144,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             g_downloadThread.detach(); // Let the thread finish on its own
         }
         KillTimer(hwnd, TIMER_PROGRESS);
-        xl_dl_uninit(); // Clean up SDK
+        if (g_sdkInitialized) {
+            xl_dl_uninit(); // Clean up SDK
+            g_sdkInitialized = false;
+        }
         PostQuitMessage(0);
         break;
 
@@ -236,6 +242,24 @@ void OnStartDownload()
     if (g_downloadInProgress) {
         SetStatusText("Download already in progress...");
         return;
+    }
+
+    // Check if last download was completed - offer to start a new download
+    if (g_lastDownloadCompleted) {
+        // Get current download URL to check if it's the same
+        std::string downloadUrl = GetWindowText(g_hEditDownloadUrl);
+        int result = MessageBox(g_hWnd, 
+            "Previous download was completed. Do you want to start a new download?", 
+            "Download Completed", 
+            MB_YESNO | MB_ICONQUESTION);
+        
+        if (result == IDNO) {
+            SetStatusText("Download already completed! Check the download folder.");
+            return;
+        }
+        
+        // User wants to start a new download, reset the completion flag
+        g_lastDownloadCompleted = false;
     }
 
     // Ensure previous thread is cleaned up before starting new one
@@ -334,18 +358,22 @@ void DownloadWorkerThread(std::string appId, std::string tokenServer, std::strin
         if (!ExistDir(SDK_CONFIG_DIR)) CreateDir(SDK_CONFIG_DIR);
         if (!ExistDir(FILE_SAVE_DIR)) CreateDir(FILE_SAVE_DIR);
 
-        // SDK initialization
-        xl_dl_init_param init_param;
-        init_param.app_id = appId.c_str();
-        init_param.app_version = APP_VER.c_str();
-        init_param.save_tasks = 1;
-        init_param.cfg_path = SDK_CONFIG_DIR.c_str();
-        
-        if (xl_dl_init(&init_param) != 0) {
-            SetStatusText("Failed to initialize SDK");
-            g_downloadInProgress = false;
-            PostMessage(g_hWnd, WM_COMMAND, MAKEWPARAM(0, 0), 0); // Trigger UI update
-            return;
+        // SDK initialization - only initialize once
+        if (!g_sdkInitialized) {
+            xl_dl_init_param init_param;
+            init_param.app_id = appId.c_str();
+            init_param.app_version = APP_VER.c_str();
+            init_param.save_tasks = 1;
+            init_param.cfg_path = SDK_CONFIG_DIR.c_str();
+            
+            if (xl_dl_init(&init_param) != 0) {
+                SetStatusText("Failed to initialize SDK");
+                g_downloadInProgress = false;
+                PostMessage(g_hWnd, WM_COMMAND, MAKEWPARAM(0, 0), 0); // Trigger UI update
+                return;
+            }
+            g_sdkInitialized = true;
+            SetStatusText("SDK initialized successfully");
         }
 
         // Check existing tasks
@@ -367,6 +395,7 @@ void DownloadWorkerThread(std::string appId, std::string tokenServer, std::strin
                 if (it != task_map.end() && it->second == downloadUrl) {
                     found_same = true;
                     task_id = tid;
+                    SetStatusText("Resuming previous download...");
                 }
             }
             delete[] arr;
@@ -434,5 +463,16 @@ void DownloadWorkerThread(std::string appId, std::string tokenServer, std::strin
         SetStatusText("An error occurred during download setup");
         g_downloadInProgress = false;
         PostMessage(g_hWnd, WM_COMMAND, MAKEWPARAM(0, 0), 0); // Trigger UI update
+    }
+}
+
+void CheckForUnfinishedTasks()
+{
+    // Check if there are any task mapping files indicating previous downloads
+    auto task_map = load_task_map();
+    if (!task_map.empty()) {
+        SetStatusText("Previous download tasks found. Click Start Download to resume.");
+    } else {
+        SetStatusText("Ready to download");
     }
 }

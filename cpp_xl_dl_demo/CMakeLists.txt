@@ -34,9 +34,8 @@ CPMAddPackage(
         "BUILD_TESTING OFF"
 )
 
-# 查找系统 libtorrent-rasterbar 库
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(LIBTORRENT REQUIRED IMPORTED_TARGET libtorrent-rasterbar)
+# 查找 libtorrent-rasterbar 库 (通过 vcpkg 或系统安装)
+find_package(LibtorrentRasterbar REQUIRED)
 
 # 包含当前目录头文件和父目录（xl_dl_sdk.h位置）
 include_directories(${CMAKE_SOURCE_DIR})
@@ -55,7 +54,7 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
   add_executable(cpp_xl_dl_demo_gui main_gui.cpp download_helper.cpp torrent_helper.cpp)
   target_include_directories(cpp_xl_dl_demo_gui PRIVATE ${CMAKE_SOURCE_DIR})
   target_include_directories(cpp_xl_dl_demo_gui PRIVATE ${CMAKE_SOURCE_DIR}/..)
-  target_link_libraries(cpp_xl_dl_demo_gui libcurl dk.lib comctl32 PkgConfig::LIBTORRENT)
+  target_link_libraries(cpp_xl_dl_demo_gui libcurl dk.lib comctl32 LibtorrentRasterbar::torrent-rasterbar)
   # Set GUI subsystem for Windows application
   set_target_properties(cpp_xl_dl_demo_gui PROPERTIES
     WIN32_EXECUTABLE TRUE
@@ -72,17 +71,17 @@ target_include_directories(torrent_demo PRIVATE ${CMAKE_SOURCE_DIR})
 target_include_directories(torrent_demo PRIVATE ${CMAKE_SOURCE_DIR}/..)
 
 # 链接必要的库
-target_link_libraries(torrent_demo libcurl PkgConfig::LIBTORRENT)
+target_link_libraries(torrent_demo libcurl LibtorrentRasterbar::torrent-rasterbar)
 
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-  target_link_libraries(cpp_xl_dl_demo libcurl dk.lib PkgConfig::LIBTORRENT)
+  target_link_libraries(cpp_xl_dl_demo libcurl dk.lib LibtorrentRasterbar::torrent-rasterbar)
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
   # Linux libraries not provided in this Windows-only SDK, link only curl and libtorrent
-  target_link_libraries(cpp_xl_dl_demo libcurl PkgConfig::LIBTORRENT)
+  target_link_libraries(cpp_xl_dl_demo libcurl LibtorrentRasterbar::torrent-rasterbar)
   message(WARNING "This SDK is designed for Windows. Linux dk library not available.")
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
   # macOS libraries not provided in this Windows-only SDK, link only curl and libtorrent
-  target_link_libraries(cpp_xl_dl_demo libcurl PkgConfig::LIBTORRENT)
+  target_link_libraries(cpp_xl_dl_demo libcurl LibtorrentRasterbar::torrent-rasterbar)
   message(WARNING "This SDK is designed for Windows. macOS dk library not available.")
 else()
   message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")

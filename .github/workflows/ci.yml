@@ -23,12 +23,21 @@ jobs:
       - name: Setup MSVC
         uses: microsoft/setup-msbuild@v1.3
 
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: '2024.09.30'
+
+      - name: Install libtorrent via vcpkg
+        run: |
+          .\vcpkg\vcpkg.exe install libtorrent
+
       - name: Build demo project
         run: |
           cd cpp_xl_dl_demo
           mkdir build
           cd build
-          cmake -G "Visual Studio 17 2022" -A x64 ..
+          cmake -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="${env:VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" ..
           cmake --build . --config Release
 
       - name: Verify build output

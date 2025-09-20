@@ -277,9 +277,6 @@ void OnStartDownload()
         return;
     }
 
-    // Reset completion flag when starting new download
-    g_lastDownloadCompleted = false;
-
     // Disable start button and reset progress
     EnableWindow(g_hButtonStart, FALSE);
     SendMessage(g_hProgressBar, PBM_SETPOS, 0, 0);

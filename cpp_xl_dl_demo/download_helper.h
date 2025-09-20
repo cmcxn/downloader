@@ -16,4 +16,7 @@ std::string get_login_token(const std::string& url, const std::string& app_id);
 std::string get_task_token(const std::string& url, const std::string& app_id, const std::string& session, const std::string& task_url);
 void signal_handler(int signal);
 
+// Magnet link detection
+bool is_magnet_link(const std::string& url);
+
 #endif  // DOWNLOAD_HELPER_H

@@ -1,6 +1,7 @@
 #include "download_helper.h"
 #include "fs_utility.h"
 #include "xl_dl_sdk.h"
+#include "torrent_helper.h"
 #include <windows.h>
 #include <commctrl.h>
 #include <string>
@@ -17,6 +18,7 @@
 #define ID_BUTTON_START     1004
 #define ID_PROGRESS_BAR     1005
 #define ID_STATIC_STATUS    1006
+#define ID_STATIC_PEERS     1007
 
 // Timer ID for progress updates
 #define TIMER_PROGRESS      2001
@@ -29,13 +31,18 @@ HWND g_hEditDownloadUrl = NULL;
 HWND g_hButtonStart = NULL;
 HWND g_hProgressBar = NULL;
 HWND g_hStatusLabel = NULL;
+HWND g_hPeersLabel = NULL;
 
 // Download state
 bool g_downloadInProgress = false;
 bool g_lastDownloadCompleted = false;  // Track if last download was completed
 bool g_sdkInitialized = false;  // Track if SDK has been initialized
+bool g_isTorrentDownload = false;  // Track if current download is a torrent
 uint64_t g_currentTaskId = 0;
 std::thread g_downloadThread;
+
+// Torrent downloader instance
+TorrentDownloader g_torrentDownloader;
 
 // Default values from original main.cpp
 const std::string DEFAULT_APP_ID = "eGwta3o3SzEwMTYzAAAAA7MnAAA=";
@@ -48,9 +55,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 void InitializeControls(HWND hwnd);
 void OnStartDownload();
 void UpdateProgress();
+void UpdateTorrentProgress();
 void DownloadWorkerThread(std::string appId, std::string tokenServer, std::string downloadUrl);
+void TorrentWorkerThread(std::string downloadUrl, std::string savePath);
 std::string GetWindowText(HWND hwnd);
 void SetStatusText(const std::string& text);
+void SetPeersText(const std::string& text);
 void CheckForUnfinishedTasks();
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
@@ -77,9 +87,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     g_hWnd = CreateWindowEx(
         0,
         CLASS_NAME,
-        "Thunder Downloader GUI",
+        "Thunder Downloader GUI - Magnet Link Support",
         WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, CW_USEDEFAULT, 600, 400,
+        CW_USEDEFAULT, CW_USEDEFAULT, 600, 450,
         NULL, NULL, hInstance, NULL
     );
 
@@ -143,6 +153,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             g_downloadInProgress = false;
             g_downloadThread.detach(); // Let the thread finish on its own
         }
+        // Shutdown torrent engine
+        g_torrentDownloader.Shutdown();
         KillTimer(hwnd, TIMER_PROGRESS);
         if (g_sdkInitialized) {
             xl_dl_uninit(); // Clean up SDK
@@ -216,8 +228,14 @@ void InitializeControls(HWND hwnd)
     // Status label
     g_hStatusLabel = CreateWindow("STATIC", "Ready to download",
         WS_VISIBLE | WS_CHILD,
-        20, 230, 520, 60,
+        20, 230, 520, 40,
         hwnd, (HMENU)ID_STATIC_STATUS, NULL, NULL);
+
+    // Peers label (for torrent downloads)
+    g_hPeersLabel = CreateWindow("STATIC", "",
+        WS_VISIBLE | WS_CHILD,
+        20, 280, 520, 20,
+        hwnd, (HMENU)ID_STATIC_PEERS, NULL, NULL);
 }
 
 std::string GetWindowText(HWND hwnd)
@@ -235,6 +253,11 @@ std::string GetWindowText(HWND hwnd)
 void SetStatusText(const std::string& text)
 {
     SetWindowTextA(g_hStatusLabel, text.c_str());
+}
+
+void SetPeersText(const std::string& text)
+{
+    SetWindowTextA(g_hPeersLabel, text.c_str());
 }
 
 void OnStartDownload()
@@ -281,10 +304,24 @@ void OnStartDownload()
     EnableWindow(g_hButtonStart, FALSE);
     SendMessage(g_hProgressBar, PBM_SETPOS, 0, 0);
     SetStatusText("Initializing download...");
+    SetPeersText(""); // Clear peers info
+
+    // Check if this is a magnet link
+    if (is_magnet_link(downloadUrl)) {
+        // This is a torrent download
+        g_isTorrentDownload = true;
+        SetStatusText("Detected magnet link - using torrent download...");
+        
+        std::string saveDir = get_exe_dir() + "\\download";
+        g_downloadThread = std::thread(TorrentWorkerThread, downloadUrl, saveDir);
+    } else {
+        // This is a regular HTTP download
+        g_isTorrentDownload = false;
+        g_downloadThread = std::thread(DownloadWorkerThread, appId, tokenServer, downloadUrl);
+    }
 
     // Start download in separate thread
     g_downloadInProgress = true;
-    g_downloadThread = std::thread(DownloadWorkerThread, appId, tokenServer, downloadUrl);
     
     // Start timer for progress updates
     SetTimer(g_hWnd, TIMER_PROGRESS, 1000, NULL);
@@ -292,56 +329,152 @@ void OnStartDownload()
 
 void UpdateProgress()
 {
-    if (!g_downloadInProgress || g_currentTaskId == 0) {
+    if (!g_downloadInProgress) {
         return;
     }
 
-    xl_dl_task_state st;
-    if (xl_dl_get_task_state(g_currentTaskId, &st) != 0) {
+    if (g_isTorrentDownload) {
+        UpdateTorrentProgress();
+    } else {
+        // HTTP download progress (existing code)
+        if (g_currentTaskId == 0) {
+            return;
+        }
+
+        xl_dl_task_state st;
+        if (xl_dl_get_task_state(g_currentTaskId, &st) != 0) {
+            return;
+        }
+
+        double percent = 0.0;
+        if (st.total_size > 0) {
+            percent = (100.0 * (double)st.downloaded_size) / (double)st.total_size;
+        }
+
+        // Update progress bar
+        SendMessage(g_hProgressBar, PBM_SETPOS, (WPARAM)(int)percent, 0);
+
+        // Update status text
+        char status[512];
+        sprintf_s(status, sizeof(status),
+            "Progress: %.2f%% (%lld/%lld bytes)\nSpeed: %lld KB/s",
+            percent,
+            (long long)st.downloaded_size,
+            (long long)st.total_size,
+            (long long)(st.speed / 1024)
+        );
+        SetStatusText(status);
+
+        // Check if download is complete
+        if (st.state_code == XL_DL_TASK_STATUS_SUCCEEDED) {
+            g_downloadInProgress = false;
+            g_lastDownloadCompleted = true;
+            SetStatusText("Download completed successfully!");
+            KillTimer(g_hWnd, TIMER_PROGRESS);
+            EnableWindow(g_hButtonStart, TRUE);
+        }
+        else if (st.state_code == XL_DL_TASK_STATUS_FAILED) {
+            g_downloadInProgress = false;
+            SetStatusText("Download failed!");
+            KillTimer(g_hWnd, TIMER_PROGRESS);
+            EnableWindow(g_hButtonStart, TRUE);
+        }
+    }
+}
+
+void UpdateTorrentProgress()
+{
+    if (!g_torrentDownloader.IsDownloadActive()) {
         return;
     }
 
-    double percent = 0.0;
-    if (st.total_size > 0) {
-        percent = (100.0 * (double)st.downloaded_size) / (double)st.total_size;
-    }
-
+    TorrentProgress progress = g_torrentDownloader.GetProgress();
+    
     // Update progress bar
-    SendMessage(g_hProgressBar, PBM_SETPOS, (int)percent, 0);
+    int percent = (int)(progress.progress * 100.0f);
+    SendMessage(g_hProgressBar, PBM_SETPOS, percent, 0);
 
     // Update status text
-    char statusText[512];
-    sprintf(statusText, "Progress: %.2f%% (%lld/%lld bytes) Speed: %lld KB/s",
-        percent,
-        (long long)st.downloaded_size,
-        (long long)st.total_size,
-        (long long)(st.speed / 1024));
-    SetStatusText(statusText);
+    char status[512];
+    sprintf_s(status, sizeof(status),
+        "Progress: %.2f%% (%lld/%lld bytes)\nDownload: %lld KB/s, Upload: %lld KB/s\nState: %s",
+        progress.progress * 100.0f,
+        (long long)progress.downloaded_size,
+        (long long)progress.total_size,
+        (long long)(progress.download_rate / 1024),
+        (long long)(progress.upload_rate / 1024),
+        progress.state_str.c_str()
+    );
+    SetStatusText(status);
 
-    // Check if download completed
-    if (st.state_code == XL_DL_TASK_STATUS_SUCCEEDED) {
-        SetStatusText("Download completed successfully!");
+    // Update peers info
+    char peers[256];
+    sprintf_s(peers, sizeof(peers),
+        "Peers: %d connected, %d seeds",
+        progress.num_peers,
+        progress.num_seeds
+    );
+    SetPeersText(peers);
+
+    // Check if download is complete or failed
+    if (progress.is_finished) {
         g_downloadInProgress = false;
-        g_lastDownloadCompleted = true;  // Mark that last download was completed
-        EnableWindow(g_hButtonStart, TRUE);
+        g_lastDownloadCompleted = true;
+        SetStatusText("Torrent download completed successfully!");
         KillTimer(g_hWnd, TIMER_PROGRESS);
-        
-        // Properly join the download thread
-        if (g_downloadThread.joinable()) {
-            g_downloadThread.join();
-        }
+        EnableWindow(g_hButtonStart, TRUE);
     }
-    else if (st.state_code == XL_DL_TASK_STATUS_FAILED) {
-        SetStatusText("Download failed!");
+    else if (progress.has_error) {
         g_downloadInProgress = false;
-        g_lastDownloadCompleted = false;  // Reset completion flag on failure
-        EnableWindow(g_hButtonStart, TRUE);
+        SetStatusText(("Torrent download failed: " + progress.error_message).c_str());
         KillTimer(g_hWnd, TIMER_PROGRESS);
-        
-        // Properly join the download thread
-        if (g_downloadThread.joinable()) {
-            g_downloadThread.join();
+        EnableWindow(g_hButtonStart, TRUE);
+    }
+}
+
+void TorrentWorkerThread(std::string downloadUrl, std::string savePath)
+{
+    try {
+        // Initialize torrent downloader
+        if (!g_torrentDownloader.Initialize(savePath)) {
+            SetStatusText("Failed to initialize torrent engine");
+            g_downloadInProgress = false;
+            PostMessage(g_hWnd, WM_COMMAND, MAKEWPARAM(0, 0), 0);
+            return;
         }
+
+        // Check for existing resume data
+        std::string resume_file = savePath + "\\torrent_resume.dat";
+        bool resumed = false;
+        
+        // Try to load resume data first
+        if (g_torrentDownloader.LoadResumeData(resume_file)) {
+            SetStatusText("Resumed previous torrent download...");
+            resumed = true;
+        }
+        
+        // If no resume data or loading failed, start new download
+        if (!resumed) {
+            if (!g_torrentDownloader.StartDownload(downloadUrl)) {
+                SetStatusText("Failed to start torrent download");
+                g_downloadInProgress = false;
+                PostMessage(g_hWnd, WM_COMMAND, MAKEWPARAM(0, 0), 0);
+                return;
+            }
+            SetStatusText("Torrent download started...");
+        }
+
+        // The progress will be updated by the UpdateTorrentProgress function
+        // called by the timer, so we just wait here
+        while (g_downloadInProgress && g_torrentDownloader.IsDownloadActive()) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+
+    }
+    catch (const std::exception& e) {
+        SetStatusText(("Torrent error: " + std::string(e.what())).c_str());
+        g_downloadInProgress = false;
+        PostMessage(g_hWnd, WM_COMMAND, MAKEWPARAM(0, 0), 0);
     }
 }
 

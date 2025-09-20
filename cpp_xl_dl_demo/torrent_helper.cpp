@@ -8,6 +8,7 @@
 #include <libtorrent/alert_types.hpp>
 #include <libtorrent/magnet_uri.hpp>
 #include <libtorrent/hex.hpp>
+#include <libtorrent/span.hpp>
 #include <libtorrent/write_resume_data.hpp>
 #include <libtorrent/read_resume_data.hpp>
 #include <libtorrent/bencode.hpp>
@@ -256,9 +257,9 @@ std::string TorrentDownloader::GetInfoHashHex() const {
     
     try {
         sha1_hash info_hash = pImpl->handle.info_hash();
-        return aux::to_hex(info_hash);
+        return aux::to_hex(span<char const>(info_hash.data(), info_hash.size()));
     }
-    catch (const std::exception& e) {
+    catch (const std::exception&) {
         return "";
     }
 }

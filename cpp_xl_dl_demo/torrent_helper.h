@@ -8,8 +8,8 @@
 
 // Forward declarations
 namespace libtorrent {
-    class session;
-    class torrent_handle;
+    struct session;
+    struct torrent_handle;
 }
 
 // Torrent download progress information

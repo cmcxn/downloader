@@ -17,6 +17,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(WIN32)
   set(CURL_USE_SCHANNEL ON)
   set(CURL_WINDOWS_SSPI ON)
+  add_compile_definitions(_WIN32_WINNT=0x0601)  # Windows 7 target
 else()
   set(CURL_USE_OPENSSL ON)
 endif()

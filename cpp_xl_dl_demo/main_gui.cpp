@@ -32,6 +32,7 @@ HWND g_hStatusLabel = NULL;
 
 // Download state
 bool g_downloadInProgress = false;
+bool g_lastDownloadCompleted = false;  // Track if last download was completed
 uint64_t g_currentTaskId = 0;
 std::thread g_downloadThread;
 
@@ -111,6 +112,20 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         // Handle messages from download thread
         else if (LOWORD(wParam) == 0 && !g_downloadInProgress) {
             EnableWindow(g_hButtonStart, TRUE);
+        }
+        break;
+
+    case WM_KEYDOWN:
+        // Handle Ctrl+A for edit controls
+        if (wParam == 'A' && (GetKeyState(VK_CONTROL) & 0x8000)) {
+            HWND focusedWindow = GetFocus();
+            if (focusedWindow == g_hEditAppId || 
+                focusedWindow == g_hEditTokenServer || 
+                focusedWindow == g_hEditDownloadUrl) {
+                // Select all text in the focused edit control
+                SendMessage(focusedWindow, EM_SETSEL, 0, -1);
+                return 0; // Message handled
+            }
         }
         break;
 
@@ -223,6 +238,11 @@ void OnStartDownload()
         return;
     }
 
+    // Ensure previous thread is cleaned up before starting new one
+    if (g_downloadThread.joinable()) {
+        g_downloadThread.join();
+    }
+
     // Get values from edit controls
     std::string appId = GetWindowText(g_hEditAppId);
     std::string tokenServer = GetWindowText(g_hEditTokenServer);
@@ -232,6 +252,9 @@ void OnStartDownload()
         SetStatusText("Please fill in all fields");
         return;
     }
+
+    // Reset completion flag when starting new download
+    g_lastDownloadCompleted = false;
 
     // Disable start button and reset progress
     EnableWindow(g_hButtonStart, FALSE);
@@ -278,14 +301,26 @@ void UpdateProgress()
     if (st.state_code == XL_DL_TASK_STATUS_SUCCEEDED) {
         SetStatusText("Download completed successfully!");
         g_downloadInProgress = false;
+        g_lastDownloadCompleted = true;  // Mark that last download was completed
         EnableWindow(g_hButtonStart, TRUE);
         KillTimer(g_hWnd, TIMER_PROGRESS);
+        
+        // Properly join the download thread
+        if (g_downloadThread.joinable()) {
+            g_downloadThread.join();
+        }
     }
     else if (st.state_code == XL_DL_TASK_STATUS_FAILED) {
         SetStatusText("Download failed!");
         g_downloadInProgress = false;
+        g_lastDownloadCompleted = false;  // Reset completion flag on failure
         EnableWindow(g_hButtonStart, TRUE);
         KillTimer(g_hWnd, TIMER_PROGRESS);
+        
+        // Properly join the download thread
+        if (g_downloadThread.joinable()) {
+            g_downloadThread.join();
+        }
     }
 }
 

@@ -257,7 +257,15 @@ std::string TorrentDownloader::GetInfoHashHex() const {
     
     try {
         sha1_hash info_hash = pImpl->handle.info_hash();
-        return aux::to_hex(span<char const>(info_hash.data(), info_hash.size()));
+        std::string info_hash_bytes = info_hash.to_string();
+        static constexpr char hex_digits[] = "0123456789abcdef";
+        std::string info_hash_hex;
+        info_hash_hex.reserve(info_hash_bytes.size() * 2);
+        for (unsigned char byte : info_hash_bytes) {
+            info_hash_hex.push_back(hex_digits[byte >> 4]);
+            info_hash_hex.push_back(hex_digits[byte & 0x0f]);
+        }
+        return info_hash_hex;
     }
     catch (const std::exception&) {
         return "";

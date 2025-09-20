@@ -34,7 +34,7 @@ jobs:
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
-          vcpkgGitCommitId: 'c82f74667287d3dc386bce81e44964370c91a289'
+          vcpkgGitCommitId: '120deac3062162151622ca4860575a33844ba10b'
 
       - name: Install libtorrent via vcpkg
         run: |

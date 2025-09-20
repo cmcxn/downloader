@@ -443,15 +443,26 @@ void TorrentWorkerThread(std::string downloadUrl, std::string savePath)
             return;
         }
 
-        // Start torrent download
-        if (!g_torrentDownloader.StartDownload(downloadUrl)) {
-            SetStatusText("Failed to start torrent download");
-            g_downloadInProgress = false;
-            PostMessage(g_hWnd, WM_COMMAND, MAKEWPARAM(0, 0), 0);
-            return;
+        // Check for existing resume data
+        std::string resume_file = savePath + "\\torrent_resume.dat";
+        bool resumed = false;
+        
+        // Try to load resume data first
+        if (g_torrentDownloader.LoadResumeData(resume_file)) {
+            SetStatusText("Resumed previous torrent download...");
+            resumed = true;
         }
-
-        SetStatusText("Torrent download started...");
+        
+        // If no resume data or loading failed, start new download
+        if (!resumed) {
+            if (!g_torrentDownloader.StartDownload(downloadUrl)) {
+                SetStatusText("Failed to start torrent download");
+                g_downloadInProgress = false;
+                PostMessage(g_hWnd, WM_COMMAND, MAKEWPARAM(0, 0), 0);
+                return;
+            }
+            SetStatusText("Torrent download started...");
+        }
 
         // The progress will be updated by the UpdateTorrentProgress function
         // called by the timer, so we just wait here

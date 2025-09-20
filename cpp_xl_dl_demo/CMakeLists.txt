@@ -47,6 +47,9 @@ link_directories(${CMAKE_SOURCE_DIR}/..)
 # 添加可执行文件，包含 main.cpp 和 download_helper.cpp
 add_executable(cpp_xl_dl_demo main.cpp download_helper.cpp torrent_helper.cpp)
 
+# 添加 torrent demo 可执行文件
+add_executable(torrent_demo torrent_demo.cpp download_helper.cpp torrent_helper.cpp)
+
 # 添加Windows GUI可执行文件
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
   add_executable(cpp_xl_dl_demo_gui main_gui.cpp download_helper.cpp torrent_helper.cpp)
@@ -65,7 +68,12 @@ endif()
 target_include_directories(cpp_xl_dl_demo PRIVATE ${CMAKE_SOURCE_DIR})
 target_include_directories(cpp_xl_dl_demo PRIVATE ${CMAKE_SOURCE_DIR}/..)
 
+target_include_directories(torrent_demo PRIVATE ${CMAKE_SOURCE_DIR})
+target_include_directories(torrent_demo PRIVATE ${CMAKE_SOURCE_DIR}/..)
+
 # 链接必要的库
+target_link_libraries(torrent_demo libcurl PkgConfig::LIBTORRENT)
+
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
   target_link_libraries(cpp_xl_dl_demo libcurl dk.lib PkgConfig::LIBTORRENT)
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")

@@ -161,7 +161,9 @@ std::string get_task_token(const std::string& url, const std::string& app_id, co
 
 void signal_handler(int signal) {
     printf("\n[Debug] Caught signal %d, exiting...\n", signal);
+#ifdef XL_DL_SDK_H // Only call if we have the header included
     xl_dl_uninit();
+#endif
     exit(0);
 }
 

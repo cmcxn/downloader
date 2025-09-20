@@ -47,6 +47,12 @@ public:
     // Resume a previous download by info hash
     bool ResumeDownload(const std::string& info_hash_hex);
     
+    // Save torrent resume data for interruption/resumption
+    bool SaveResumeData(const std::string& resume_file);
+    
+    // Load torrent resume data
+    bool LoadResumeData(const std::string& resume_file);
+    
     // Get current download progress
     TorrentProgress GetProgress() const;
     

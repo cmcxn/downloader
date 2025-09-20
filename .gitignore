@@ -3,6 +3,10 @@ build/
 **/build/
 **/build/*
 
+# Downloads directory for testing
+downloads/
+**/downloads/
+
 # CMake
 CMakeCache.txt
 CMakeFiles/
@@ -54,3 +58,6 @@ Thumbs.db
 *.tar.gz
 *.tar.bz2
 *.7z
+
+# Torrent resume data
+torrent_resume.dat

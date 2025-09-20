@@ -30,7 +30,8 @@ jobs:
 
       - name: Install libtorrent via vcpkg
         run: |
-          .\vcpkg\vcpkg.exe install libtorrent
+          vcpkg install libtorrent
+        shell: cmd
 
       - name: Build demo project
         run: |

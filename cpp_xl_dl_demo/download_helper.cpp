@@ -164,3 +164,7 @@ void signal_handler(int signal) {
     xl_dl_uninit();
     exit(0);
 }
+
+bool is_magnet_link(const std::string& url) {
+    return url.length() > 8 && url.substr(0, 8) == "magnet:?";
+}
